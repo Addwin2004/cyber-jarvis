@@ -100,4 +100,7 @@ def run_scraper():
     
     c = scrape_cves()
     cves_added = db.add_cves(c)
+    
+    db.cleanup_old_data(days=7)
+    
     return arts_added, cves_added

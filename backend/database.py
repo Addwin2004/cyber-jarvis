@@ -30,6 +30,13 @@ class InMemoryDB:
     def get_cves(self):
         return sorted(self.cves, key=lambda x: x.get('timestamp', ''), reverse=True)
 
+    def cleanup_old_data(self, days=7):
+        import datetime
+        cutoff = (datetime.datetime.now() - datetime.timedelta(days=days)).isoformat()
+        self.articles = [a for a in self.articles if a.get('timestamp', '') >= cutoff]
+        self.cves = [c for c in self.cves if c.get('timestamp', '') >= cutoff]
+        print(f"InMemoryDB Cleanup: Deleted records older than {days} days.")
+
 class SupabaseDB:
     def __init__(self, url, key):
         self.supabase: Client = create_client(url, key)
@@ -59,6 +66,16 @@ class SupabaseDB:
     def get_cves(self):
         res = self.supabase.table('cves').select('*').order('timestamp', desc=True).limit(50).execute()
         return res.data
+
+    def cleanup_old_data(self, days=7):
+        import datetime
+        cutoff = (datetime.datetime.now() - datetime.timedelta(days=days)).isoformat()
+        try:
+            self.supabase.table('articles').delete().lt('timestamp', cutoff).execute()
+            self.supabase.table('cves').delete().lt('timestamp', cutoff).execute()
+            print(f"Supabase Cleanup: Deleted records older than {cutoff}.")
+        except Exception as e:
+            print(f"Supabase Cleanup Error: {e}")
 
 # Initialize DB depending on env
 if SUPABASE_URL and SUPABASE_KEY and SUPABASE_URL != "your-supabase-url":
