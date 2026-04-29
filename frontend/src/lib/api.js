@@ -5,17 +5,21 @@ const api = axios.create({
 });
 
 const mockData = [
-  { url: '1', title: 'Critical Zero-Day in Microsoft Exchange', source: 'The Hacker News', timestamp: '2026-04-18T10:00', threat_level: 'CRITICAL', image: null },
-  { url: '2', title: 'New Ransomware Gang Targets Schools', source: 'BleepingComputer', timestamp: '2026-04-18T09:00', threat_level: 'HIGH', image: null },
-  { url: '3', title: 'NIST Framework Expansion Guidance', source: 'SANS ISC', timestamp: '2026-04-18T08:00', threat_level: 'ELEVATED', image: null }
+  { url: 'https://thehackernews.com/2026/04/critical-zero-day.html', title: 'Critical Zero-Day in Microsoft Exchange [MOCK]', source: 'The Hacker News', timestamp: new Date().toISOString(), threat_level: 'CRITICAL', category: 'THREAT', summary: 'This is mock data because the backend connection failed. Ensure your VITE_API_URL is set in Vercel.', image: null },
+  { url: 'https://www.bleepingcomputer.com/', title: 'New Ransomware Gang Targets Schools [MOCK]', source: 'BleepingComputer', timestamp: new Date().toISOString(), threat_level: 'HIGH', category: 'THREAT', summary: 'This is mock data because the backend connection failed. Please deploy the backend.', image: null },
+  { url: 'https://techcrunch.com/', title: 'Quantum Encryption Breakthrough [MOCK]', source: 'TechCrunch', timestamp: new Date().toISOString(), threat_level: 'ELEVATED', category: 'TECH', summary: 'Mock data fallback activated. Check your backend server.', image: null },
+  { url: 'https://www.artificialintelligence-news.com/', title: 'Mythos Changed the Math on Vulnerability Discovery [MOCK]', source: 'AI News', timestamp: new Date().toISOString(), threat_level: 'CRITICAL', category: 'AI', summary: 'AI models are being trained on malware data. Mock data fallback active.', image: null }
 ];
 
 export const fetchNews = async () => {
   try {
     const res = await api.get('/api/news');
-    return res.data?.length ? res.data : mockData;
+    if (res.data && res.data.length > 0) {
+        return res.data;
+    }
+    return mockData;
   } catch (err) {
-    console.error("API error, falling back to mock news", err);
+    console.error("API error, falling back to mock news. Did you set VITE_API_URL?", err);
     return mockData;
   }
 };
