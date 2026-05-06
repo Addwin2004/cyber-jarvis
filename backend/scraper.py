@@ -2,7 +2,14 @@ import requests
 import feedparser
 import datetime
 import re
+import logging
 from database import db
+
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
 
 RSS_FEEDS = {
     "The Hacker News": ("https://feeds.feedburner.com/TheHackersNews", "THREAT"),
@@ -19,11 +26,11 @@ def clean_html(raw_html):
 def analyze_article(title: str, summary: str, default_category: str):
     text = (title + " " + summary).lower()
     
-    # Categorize
+    # Categorize using Regex for more accurate word boundaries
     category = default_category
-    if "ai " in text or "artificial intelligence" in text or "machine learning" in text:
+    if re.search(r"\bai\b|\bartificial intelligence\b|\bmachine learning\b|\bllm\b", text):
         category = "AI"
-    elif "vulnerability" in text or "hack" in text or "breach" in text or "ransomware" in text or "cve" in text:
+    elif re.search(r"\bvulnerability\b|\bhack\b|\bhacker\b|\bbreach\b|\bransomware\b|\bcve\b", text):
          category = "THREAT"
     
     # Threat level
@@ -51,7 +58,8 @@ def scrape_rss():
                 published = getattr(entry, "published", datetime.datetime.now().isoformat())
                 
                 try:
-                    timestamp = published
+                    from dateutil import parser
+                    timestamp = parser.parse(published).isoformat()
                 except:
                     timestamp = datetime.datetime.now().isoformat()
                     
@@ -68,7 +76,7 @@ def scrape_rss():
                     "image": None
                 })
         except Exception as e:
-            print(f"Error scraping {source}: {e}")
+            logger.error(f"Failed to scrape RSS feed {source}", exc_info=True)
     return articles
 
 def scrape_cves():
@@ -91,7 +99,7 @@ def scrape_cves():
                         "timestamp": time
                     })
     except Exception as e:
-        print(f"Error scraping CVEs: {e}")
+        logger.error("Failed to scrape CVE data from CIRCL API", exc_info=True)
     return cves
 
 def run_scraper():

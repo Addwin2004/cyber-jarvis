@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { fetchNews, fetchCves } from './lib/api';
 import Navbar from './components/Navbar';
 import NewsCard from './components/NewsCard';
@@ -8,15 +8,29 @@ import { ThemeProvider } from './components/ThemeProvider';
 function App() {
   const [news, setNews] = useState([]);
   const [cves, setCves] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [selectedItem, setSelectedItem] = useState(null);
   const [activeCategory, setActiveCategory] = useState('ALL');
 
   useEffect(() => {
-    fetchNews().then(setNews);
-    fetchCves().then(setCves);
+    setIsLoading(true);
+    Promise.all([fetchNews(), fetchCves()])
+      .then(([newsData, cvesData]) => {
+        setNews(newsData);
+        setCves(cvesData);
+        setError(null);
+      })
+      .catch((err) => {
+        console.error(err);
+        setError("Failed to fetch intelligence data. System offline.");
+      })
+      .finally(() => {
+        setIsLoading(false);
+      });
   }, []);
 
-  const getFilteredItems = () => {
+  const displayedItems = useMemo(() => {
     if (activeCategory === 'ALL') return news;
     if (activeCategory === 'CVE') return cves.map(c => ({
       title: c.cve_id,
@@ -28,9 +42,7 @@ function App() {
       url: `https://nvd.nist.gov/vuln/detail/${c.cve_id}`
     }));
     return news.filter(n => n.category === activeCategory);
-  };
-
-  const displayedItems = getFilteredItems();
+  }, [activeCategory, news, cves]);
 
   return (
     <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
@@ -43,7 +55,7 @@ function App() {
             <p className="text-muted-foreground text-lg">Aggregated alerts and insights from across the threat landscape.</p>
           </div>
 
-          {displayedItems.length === 0 ? (
+          {isLoading ? (
             <div className="flex h-[50vh] items-center justify-center rounded-2xl border border-dashed border-border bg-card/50">
               <p className="text-muted-foreground flex items-center gap-3 text-lg font-medium">
                 <span className="relative flex h-4 w-4">
@@ -52,6 +64,17 @@ function App() {
                 </span>
                 Synchronizing data...
               </p>
+            </div>
+          ) : error ? (
+            <div className="flex h-[50vh] items-center justify-center rounded-2xl border border-destructive/50 bg-destructive/10 text-destructive p-6 text-center">
+              <div>
+                <h3 className="text-xl font-bold mb-2">Connection Severed</h3>
+                <p>{error}</p>
+              </div>
+            </div>
+          ) : displayedItems.length === 0 ? (
+            <div className="flex h-[50vh] items-center justify-center rounded-2xl border border-dashed border-border bg-card/50">
+               <p className="text-muted-foreground text-lg font-medium">No intelligence found for this category.</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 auto-rows-max">

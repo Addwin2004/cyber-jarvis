@@ -1,6 +1,9 @@
 import os
+import logging
 from supabase import create_client, Client
 from dotenv import load_dotenv
+
+logger = logging.getLogger(__name__)
 
 load_dotenv()
 
@@ -47,8 +50,8 @@ class SupabaseDB:
             res = self.supabase.table('articles').upsert(items, on_conflict='url').execute()
             return len(res.data)
         except Exception as e:
-            print(f"Supabase Error (Articles): {e}")
-            return 0
+            logger.error(f"Supabase Insertion Error (Articles): {e}", exc_info=True)
+            raise RuntimeError(f"Database insertion failed for articles: {e}")
             
     def add_cves(self, items):
         if not items: return 0
@@ -56,8 +59,8 @@ class SupabaseDB:
             res = self.supabase.table('cves').upsert(items, on_conflict='cve_id').execute()
             return len(res.data)
         except Exception as e:
-            print(f"Supabase Error (CVEs): {e}")
-            return 0
+            logger.error(f"Supabase Insertion Error (CVEs): {e}", exc_info=True)
+            raise RuntimeError(f"Database insertion failed for CVEs: {e}")
             
     def get_articles(self):
         res = self.supabase.table('articles').select('*').order('timestamp', desc=True).limit(50).execute()
@@ -81,5 +84,4 @@ class SupabaseDB:
 if SUPABASE_URL and SUPABASE_KEY and SUPABASE_URL != "your-supabase-url":
     db = SupabaseDB(SUPABASE_URL, SUPABASE_KEY)
 else:
-    print("Warning: Missing or invalid Supabase credentials. Falling back to InMemoryDB.")
-    db = InMemoryDB()
+    raise ValueError("CRITICAL: Missing or invalid Supabase credentials. The system cannot start without a database.")
